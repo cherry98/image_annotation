@@ -1,37 +1,45 @@
 import 'package:flutter/material.dart';
-import 'package:image_annotation/src/text_annotation.dart';
+import 'text_annotation.dart';
 
 // AnnotationPainter class
 class AnnotationPainter extends CustomPainter {
-  final List<List<Offset>> annotations;
+  // final List<List<Offset>> annotations;
+  final List<Map<String, List<Offset>>> annotations;
   final List<TextAnnotation> textAnnotations;
   final String annotationType;
+  final Color color;
 
   AnnotationPainter(
-      this.annotations, this.textAnnotations, this.annotationType);
+    this.annotations,
+    this.textAnnotations,
+    this.annotationType,
+    this.color,
+  );
 
   // Paint annotations and text on the canvas
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.red
+      ..color =color
       ..strokeWidth = 2.0
       ..style = PaintingStyle.stroke;
 
     for (var annotation in annotations) {
-      if (annotation.isNotEmpty) {
-        if (annotationType == 'line') {
-          for (var i = 0; i < annotation.length - 1; i++) {
-            canvas.drawLine(annotation[i], annotation[i + 1], paint);
+      annotation.forEach((annotationType, value) {
+        if (value.isNotEmpty) {
+          if (annotationType == 'line') {
+            for (var i = 0; i < value.length - 1; i++) {
+              canvas.drawLine(value[i], value[i + 1], paint);
+            }
+          } else if (annotationType == 'rectangle') {
+            final rect = Rect.fromPoints(value.first, value.last);
+            canvas.drawRect(rect, paint);
+          } else if (annotationType == 'oval') {
+            final oval = Rect.fromPoints(value.first, value.last);
+            canvas.drawOval(oval, paint);
           }
-        } else if (annotationType == 'rectangle') {
-          final rect = Rect.fromPoints(annotation.first, annotation.last);
-          canvas.drawRect(rect, paint);
-        } else if (annotationType == 'oval') {
-          final oval = Rect.fromPoints(annotation.first, annotation.last);
-          canvas.drawOval(oval, paint);
         }
-      }
+      });
     }
 
     drawTextAnnotations(canvas); // Draw text annotations
@@ -42,8 +50,7 @@ class AnnotationPainter extends CustomPainter {
     for (var annotation in textAnnotations) {
       final textSpan = TextSpan(
         text: annotation.text,
-        style: TextStyle(
-            color: annotation.textColor, fontSize: annotation.fontSize),
+        style: TextStyle(color: annotation.textColor, fontSize: annotation.fontSize),
       );
       final textPainter = TextPainter(
         text: textSpan,

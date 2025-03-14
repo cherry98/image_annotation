@@ -9,11 +9,15 @@ import 'annotation_painter.dart';
 class ImageAnnotation extends StatefulWidget {
   final String imagePath;
   final String annotationType;
+  final Color color;
+  final Color buttonColor;
 
   const ImageAnnotation({
     super.key,
     required this.imagePath,
     required this.annotationType,
+    this.color = Colors.red,
+    this.buttonColor = Colors.black,
   });
 
   @override
@@ -22,11 +26,14 @@ class ImageAnnotation extends StatefulWidget {
 
 class _ImageAnnotationState extends State<ImageAnnotation> {
   // List of annotation points for different shapes
-  List<List<Offset>> annotations = [];
+  Map<String, List<Offset>> annotationMap = {};
+  List<Map<String, List<Offset>>> annotations = [];
+
   List<Offset> currentAnnotation = []; // Current annotation points
   List<TextAnnotation> textAnnotations = []; // List of text annotations
   Size? imageSize; // Size of the image
   Offset? imageOffset; // Offset of the image on the screen
+  List<bool> totalList = []; //text=true else=false use to remove list
 
   @override
   void initState() {
@@ -78,8 +85,7 @@ class _ImageAnnotationState extends State<ImageAnnotation> {
     if (imageSize != null) {
       final imageWidget = context.findRenderObject() as RenderBox?;
       final imagePosition = imageWidget?.localToGlobal(Offset.zero);
-      final widgetPosition =
-          (context.findRenderObject() as RenderBox).localToGlobal(Offset.zero);
+      final widgetPosition = (context.findRenderObject() as RenderBox).localToGlobal(Offset.zero);
       final offsetX = imagePosition!.dx - widgetPosition.dx;
       final offsetY = imagePosition.dy - widgetPosition.dy;
       setState(() {
@@ -91,17 +97,17 @@ class _ImageAnnotationState extends State<ImageAnnotation> {
   // Start a new annotation
   void startNewAnnotation() {
     setState(() {
+      totalList.add(false);
       currentAnnotation = [];
-      annotations.add(currentAnnotation);
+      annotationMap = {};
+      annotationMap[widget.annotationType] = currentAnnotation;
+      annotations.add(annotationMap);
     });
   }
 
   // Draw shape based on the current position
   void drawShape(Offset position) {
-    if (position.dx >= 0 &&
-        position.dy >= 0 &&
-        position.dx <= imageSize!.width &&
-        position.dy <= imageSize!.height) {
+    if (position.dx >= 0 && position.dy >= 0 && position.dx <= imageSize!.width && position.dy <= imageSize!.height) {
       setState(() {
         currentAnnotation.add(position);
       });
@@ -109,9 +115,9 @@ class _ImageAnnotationState extends State<ImageAnnotation> {
   }
 
   // Add a text annotation to the list
-  void addTextAnnotation(
-      Offset position, String text, Color textColor, double fontSize) {
+  void addTextAnnotation(Offset position, String text, Color textColor, double fontSize) {
     setState(() {
+      totalList.add(true);
       textAnnotations.add(TextAnnotation(
         position: position,
         text: text,
@@ -124,12 +130,16 @@ class _ImageAnnotationState extends State<ImageAnnotation> {
   // Clear the last added annotation
   void clearLastAnnotation() {
     setState(() {
-      if (annotations.isNotEmpty) {
-        annotations.removeLast();
+      if (totalList.last) {
+        if (textAnnotations.isNotEmpty) {
+          textAnnotations.removeLast();
+        }
+      } else {
+        if (annotations.isNotEmpty) {
+          annotations.removeLast();
+        }
       }
-      if (textAnnotations.isNotEmpty) {
-        textAnnotations.removeLast();
-      }
+      totalList.removeLast();
     });
   }
 
@@ -145,7 +155,6 @@ class _ImageAnnotationState extends State<ImageAnnotation> {
   // Show a dialog to add text annotation
   void _showTextAnnotationDialog(BuildContext context, Offset localPosition) {
     String text = '';
-
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -162,16 +171,26 @@ class _ImageAnnotationState extends State<ImageAnnotation> {
                 Navigator.of(context).pop(); // Close the dialog
                 if (text.isNotEmpty) {
                   // Add the text annotation
-                  addTextAnnotation(localPosition, text, Colors.black, 16.0);
+                  addTextAnnotation(localPosition, text, widget.color, 16.0);
                 }
               },
-              child: const Text('Add'),
+              child: Text(
+                'Add',
+                style: TextStyle(
+                  color: widget.buttonColor,
+                ),
+              ),
             ),
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop(); // Close the dialog
               },
-              child: const Text('Cancel'),
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: widget.buttonColor,
+                ),
+              ),
             ),
           ],
         );
@@ -190,40 +209,36 @@ class _ImageAnnotationState extends State<ImageAnnotation> {
       return const CircularProgressIndicator(); // Placeholder or loading indicator while the image size and offset are being retrieved
     }
 
-    return GestureDetector(
-      onLongPress: clearAllAnnotations,
-      onDoubleTap: clearLastAnnotation,
-      onTapDown: (details) {
-        if (widget.annotationType == 'text') {
-          _showTextAnnotationDialog(context, details.localPosition);
-        } else {
-          startNewAnnotation();
-        }
-      },
-      child: RepaintBoundary(
-        child: Stack(
-          children: [
-            Image.asset(
-              widget.imagePath,
-              width: imageSize!.width,
-              height: imageSize!.height,
-            ),
-            Positioned(
-              left: imageOffset!.dx,
-              top: imageOffset!.dy,
-              child: GestureDetector(
-                onPanUpdate: (details) {
-                  drawShape(details.localPosition);
-                },
-                child: CustomPaint(
-                  painter: AnnotationPainter(
-                      annotations, textAnnotations, widget.annotationType),
-                  size: imageSize!,
-                ),
+    return RepaintBoundary(
+      child: Stack(
+        children: [
+          Image.asset(
+            widget.imagePath,
+            width: imageSize!.width,
+            height: imageSize!.height,
+          ),
+          Positioned(
+            left: imageOffset!.dx,
+            top: imageOffset!.dy,
+            child: GestureDetector(
+              onLongPress: clearAllAnnotations,
+              onDoubleTap: clearLastAnnotation,
+              onTapDown: (details) {
+                if (widget.annotationType == 'text') {
+                  _showTextAnnotationDialog(context, details.localPosition);
+                }
+              },
+              onPanStart: (_) => startNewAnnotation(),
+              onPanUpdate: (details) {
+                drawShape(details.localPosition);
+              },
+              child: CustomPaint(
+                painter: AnnotationPainter(annotations, textAnnotations, widget.annotationType, widget.color),
+                size: imageSize!,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
