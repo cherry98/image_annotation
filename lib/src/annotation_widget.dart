@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'text_annotation.dart';
 import 'annotation_painter.dart';
+import 'linear_annotation.dart';
 
 // ImageAnnotation class
 class ImageAnnotation extends StatefulWidget {
@@ -26,9 +27,7 @@ class ImageAnnotation extends StatefulWidget {
 
 class _ImageAnnotationState extends State<ImageAnnotation> {
   // List of annotation points for different shapes
-  Map<String, List<Offset>> annotationMap = {};
-  List<Map<String, List<Offset>>> annotations = [];
-
+  List<LinearAnnotation> linearAnnotations = [];
   List<Offset> currentAnnotation = []; // Current annotation points
   List<TextAnnotation> textAnnotations = []; // List of text annotations
   Size? imageSize; // Size of the image
@@ -99,9 +98,8 @@ class _ImageAnnotationState extends State<ImageAnnotation> {
     setState(() {
       totalList.add(false);
       currentAnnotation = [];
-      annotationMap = {};
-      annotationMap[widget.annotationType] = currentAnnotation;
-      annotations.add(annotationMap);
+      final tempAnnotation = LinearAnnotation(annotations: currentAnnotation, annotationType: widget.annotationType);
+      linearAnnotations.add(tempAnnotation);
     });
   }
 
@@ -135,8 +133,8 @@ class _ImageAnnotationState extends State<ImageAnnotation> {
           textAnnotations.removeLast();
         }
       } else {
-        if (annotations.isNotEmpty) {
-          annotations.removeLast();
+        if (linearAnnotations.isNotEmpty) {
+          linearAnnotations.removeLast();
         }
       }
       totalList.removeLast();
@@ -146,7 +144,7 @@ class _ImageAnnotationState extends State<ImageAnnotation> {
   // Clear all annotations
   void clearAllAnnotations() {
     setState(() {
-      annotations.clear();
+      linearAnnotations.clear();
       textAnnotations.clear();
       currentAnnotation = [];
     });
@@ -233,7 +231,7 @@ class _ImageAnnotationState extends State<ImageAnnotation> {
                 drawShape(details.localPosition);
               },
               child: CustomPaint(
-                painter: AnnotationPainter(annotations, textAnnotations, widget.annotationType, widget.color),
+                painter: AnnotationPainter(linearAnnotations, textAnnotations, widget.color),
                 size: imageSize!,
               ),
             ),

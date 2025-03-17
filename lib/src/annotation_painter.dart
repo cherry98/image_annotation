@@ -1,18 +1,16 @@
 import 'package:flutter/material.dart';
 import 'text_annotation.dart';
+import 'linear_annotation.dart';
 
 // AnnotationPainter class
 class AnnotationPainter extends CustomPainter {
-  // final List<List<Offset>> annotations;
-  final List<Map<String, List<Offset>>> annotations;
+  final List<LinearAnnotation> linearAnnotations;
   final List<TextAnnotation> textAnnotations;
-  final String annotationType;
   final Color color;
 
   AnnotationPainter(
-    this.annotations,
+    this.linearAnnotations,
     this.textAnnotations,
-    this.annotationType,
     this.color,
   );
 
@@ -20,26 +18,24 @@ class AnnotationPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color =color
+      ..color = color
       ..strokeWidth = 2.0
       ..style = PaintingStyle.stroke;
 
-    for (var annotation in annotations) {
-      annotation.forEach((annotationType, value) {
-        if (value.isNotEmpty) {
-          if (annotationType == 'line') {
-            for (var i = 0; i < value.length - 1; i++) {
-              canvas.drawLine(value[i], value[i + 1], paint);
-            }
-          } else if (annotationType == 'rectangle') {
-            final rect = Rect.fromPoints(value.first, value.last);
-            canvas.drawRect(rect, paint);
-          } else if (annotationType == 'oval') {
-            final oval = Rect.fromPoints(value.first, value.last);
-            canvas.drawOval(oval, paint);
+    for (var element in linearAnnotations) {
+      if (element.annotations.isNotEmpty) {
+        if (element.annotationType == 'line') {
+          for (var i = 0; i < element.annotations.length - 1; i++) {
+            canvas.drawLine(element.annotations[i], element.annotations[i + 1], paint);
           }
+        } else if (element.annotationType == 'rectangle') {
+          final rect = Rect.fromPoints(element.annotations.first, element.annotations.last);
+          canvas.drawRect(rect, paint);
+        } else if (element.annotationType == 'oval') {
+          final oval = Rect.fromPoints(element.annotations.first, element.annotations.last);
+          canvas.drawOval(oval, paint);
         }
-      });
+      }
     }
 
     drawTextAnnotations(canvas); // Draw text annotations
